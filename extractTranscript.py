@@ -96,39 +96,36 @@ def extract_transcript(ttml_content, output_path, include_timestamps=False):
             'podcasts': 'http://podcasts.apple.com/transcript-ttml-internal'
         }
 
-        # Try with namespace first
-        paragraphs = root.findall('.//tt:p', ns)
+        # Follow the same structure as JavaScript: result.tt.body[0].div[0].p
+        # Access body[0]
+        body_elements = root.findall('tt:body', ns)
+        if not body_elements:
+            body_elements = root.findall('body')
 
-        # If no paragraphs found with namespace, try without
-        if not paragraphs:
-            paragraphs = root.findall('.//p')
+        if not body_elements:
+            raise ValueError("No body element found in TTML")
 
+        body = body_elements[0]
+
+        # Access div elements
+        div_elements = body.findall('tt:div', ns)
+        if not div_elements:
+            div_elements = body.findall('div')
+
+        if not div_elements:
+            raise ValueError("No div element found in body")
+
+        # Process ALL div elements, not just div[0]
         transcript = []
 
-        for paragraph in paragraphs:
-            # Find all sentence-level spans using iter() to traverse all descendants
-            sentence_spans = [
-                span for span in paragraph.iter()
-                if span.tag.endswith('span') and
-                (span.get('{http://podcasts.apple.com/transcript-ttml-internal}unit') == 'sentence'
-                 or span.get('unit') == 'sentence')
-            ]
+        for div in div_elements:
+            # Access p elements within this div
+            paragraphs = div.findall('tt:p', ns)
+            if not paragraphs:
+                paragraphs = div.findall('p')
 
-            # If we found sentence spans, extract each sentence separately
-            if sentence_spans:
-                for sentence_span in sentence_spans:
-                    sentence_text = extract_text_from_spans(sentence_span).strip()
-                    # Normalize whitespace
-                    sentence_text = ' '.join(sentence_text.split())
-
-                    if sentence_text:
-                        if include_timestamps and 'begin' in sentence_span.attrib:
-                            timestamp = format_timestamp(float(sentence_span.attrib['begin']))
-                            transcript.append(f"[{timestamp}] {sentence_text}")
-                        else:
-                            transcript.append(sentence_text)
-            else:
-                # Fallback: extract all text from the paragraph as one block
+            for paragraph in paragraphs:
+                # Extract all text from the paragraph as one block (matching JavaScript behavior)
                 paragraph_text = extract_text_from_spans(paragraph).strip()
                 # Normalize whitespace (replace multiple spaces with single space)
                 paragraph_text = ' '.join(paragraph_text.split())

@@ -5,7 +5,7 @@ This script extracts transcripts from the Podcasts app on macOS.
 ## Installation
 
 1. Clone the repository
-2. Install dependencies: `npm install`
+2. Install dependencies: `npm install` if use `extractTranscript.js`.
 
 ## Usage
 
@@ -15,7 +15,10 @@ Note: You need to download the desired podcast episode(s) before you can extract
 To process all TTML files in your Apple Podcasts cache:
 ```bash
 node extractTranscript.js [--timestamps]
+(or)
+python3 extractTranscript.py [--timestamps]
 ```
+
 
 This will:
 1. Find all TTML files in `~/Library/Group Containers/243LU875E5.groups.com.apple.podcasts/Library/Cache/Assets/TTML`
