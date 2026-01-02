@@ -202,6 +202,9 @@ Examples:
   # Process all files with timestamps and custom output directory
   python extractTranscript.py --timestamps -o ~/my-transcripts
 
+  # Process all files, skipping those already processed
+  python extractTranscript.py --skip-existing
+
   # Process a single TTML file
   python extractTranscript.py input.ttml output.txt
 
@@ -219,6 +222,8 @@ Examples:
                         help='Include timestamps in the transcript output')
     parser.add_argument('-o', '--output-dir', default='./transcripts',
                         help='Output directory for batch mode (default: ./transcripts)')
+    parser.add_argument('--skip-existing', action='store_true', default=True,
+                        help='Skip files that have already been processed (batch mode only)')
 
     args = parser.parse_args()
 
@@ -290,6 +295,11 @@ Examples:
                     print(f"  No metadata found, using ID: {file_info['id']}")
 
                 output_path = os.path.join(output_dir, filename)
+
+                # Skip if file already exists and --skip-existing is set
+                if args.skip_existing and os.path.exists(output_path):
+                    print(f"  Skipping (already exists): {filename}")
+                    continue
 
                 with open(file_info['path'], 'r', encoding='utf-8') as f:
                     data = f.read()
