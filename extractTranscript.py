@@ -196,8 +196,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-  # Process all TTML files in Apple Podcasts cache
+  # Process all TTML files in Apple Podcasts cache (quiet mode)
   python extractTranscript.py
+
+  # Process all files with verbose output
+  python extractTranscript.py --verbose
 
   # Process all files with timestamps and custom output directory
   python extractTranscript.py --timestamps -o ~/my-transcripts
@@ -224,6 +227,8 @@ Examples:
                         help='Output directory for batch mode (default: ./transcripts)')
     parser.add_argument('--skip-existing', action='store_true', default=True,
                         help='Skip files that have already been processed (batch mode only)')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Print detailed processing information (batch mode only)')
 
     args = parser.parse_args()
 
@@ -266,9 +271,11 @@ Examples:
         filename_counts = {}
 
         # Process files
+        skipped_count = 0
         for file_info in ttml_files:
             try:
-                print(f"Processing: {file_info['transcript_identifier']}")
+                if args.verbose:
+                    print(f"Processing: {file_info['transcript_identifier']}")
 
                 # Query database for metadata
                 metadata = query_episode_metadata(db, file_info['transcript_identifier'])
@@ -283,7 +290,8 @@ Examples:
                     filename = f"{base_filename}{suffix}.txt"
                     filename_counts[base_filename] = count + 1
 
-                    print(f'  Found metadata: "{metadata["podcast_title"]}" - "{metadata["episode_title"]}"')
+                    if args.verbose:
+                        print(f'  Found metadata: "{metadata["podcast_title"]}" - "{metadata["episode_title"]}"')
                 else:
                     # Fallback to original ID-based naming
                     base_filename = file_info['id']
@@ -292,13 +300,16 @@ Examples:
                     filename = f"{base_filename}{suffix}.txt"
                     filename_counts[base_filename] = count + 1
 
-                    print(f"  No metadata found, using ID: {file_info['id']}")
+                    if args.verbose:
+                        print(f"  No metadata found, using ID: {file_info['id']}")
 
                 output_path = os.path.join(output_dir, filename)
 
                 # Skip if file already exists and --skip-existing is set
                 if args.skip_existing and os.path.exists(output_path):
-                    print(f"  Skipping (already exists): {filename}")
+                    if args.verbose:
+                        print(f"  Skipping (already exists): {filename}")
+                    skipped_count += 1
                     continue
 
                 with open(file_info['path'], 'r', encoding='utf-8') as f:
@@ -324,7 +335,7 @@ Examples:
                     print(f"Failed to process {file_info['path']}: {fallback_error}")
 
         db.close()
-        print("Processing completed!")
+        print(f"Processing {len(ttml_files)} files completed! Skipped {skipped_count} files.")
 
     else:
         # Invalid combination of arguments
