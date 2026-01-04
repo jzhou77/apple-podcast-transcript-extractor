@@ -5,6 +5,7 @@ import argparse
 import sqlite3
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from podcast_db import query_episode_metadata
 
 
 def format_timestamp(seconds):
@@ -21,40 +22,6 @@ def sanitize_filename(filename):
     filename = re.sub(r'\s+', ' ', filename)
     filename = filename.strip()
     return filename[:200]  # Limit length to avoid filesystem issues
-
-
-def query_episode_metadata(db, transcript_identifier):
-    query = """
-        SELECT
-            e.ZTITLE as episode_title,
-            e.ZPUBDATE,
-            e.ZDURATION,
-            p.ZTITLE as podcast_title,
-            p.ZAUTHOR,
-            p.ZCATEGORY
-        FROM ZMTEPISODE e
-        JOIN ZMTPODCAST p ON e.ZPODCASTUUID = p.ZUUID
-        WHERE e.ZTRANSCRIPTIDENTIFIER = ?
-    """
-
-    try:
-        cursor = db.cursor()
-        cursor.execute(query, (transcript_identifier,))
-        row = cursor.fetchone()
-
-        if row:
-            return {
-                'episode_title': row[0],
-                'pub_date': row[1],
-                'duration': row[2],
-                'podcast_title': row[3],
-                'author': row[4],
-                'category': row[5]
-            }
-        return None
-    except sqlite3.Error as e:
-        print(f"Database query error for {transcript_identifier}: {e}")
-        return None
 
 
 def extract_text_from_spans(element):
