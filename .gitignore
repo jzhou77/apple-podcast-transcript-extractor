@@ -10,6 +10,9 @@ transcripts/
 # Environment variables
 .env
 
+# Configuration with credentials
+config.json
+
 # Editor directories and files
 .idea/
 .vscode/
