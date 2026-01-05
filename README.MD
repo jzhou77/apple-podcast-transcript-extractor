@@ -1,6 +1,6 @@
 # Apple Podcasts Transcript Extractor
 
-This scripts that download and then extract transcripts from the Podcasts app on macOS.
+Scripts that download and then extract transcripts from the Podcasts app on macOS.
 
 [![Scripts in action](https://img.youtube.com/vi/t1svUq23-4o/0.jpg)](https://youtu.be/t1svUq23-4o)
 
