@@ -47,6 +47,51 @@ def query_episode_metadata(db, transcript_identifier):
         return None
 
 
+def query_show_info(db, store_collection_id):
+    """
+    Query podcast show information from the Apple Podcasts database.
+
+    Args:
+        db: SQLite database connection
+        store_collection_id: The podcast's store collection ID
+
+    Returns:
+        Dictionary with podcast show data or None if not found
+    """
+    query = """
+        SELECT
+            p.ZTITLE as podcast_title,
+            p.ZAUTHOR as author,
+            p.ZCATEGORY as category,
+            p.ZUUID as podcast_uuid,
+            p.ZSTORECOLLECTIONID as store_collection_id,
+            p.Z_PK as primary_key,
+            p.ZITEMDESCRIPTION as description
+        FROM ZMTPODCAST p
+        WHERE p.ZSTORECOLLECTIONID = ?
+    """
+
+    try:
+        cursor = db.cursor()
+        cursor.execute(query, (store_collection_id,))
+        row = cursor.fetchone()
+
+        if row:
+            return {
+                "podcast_title": row[0],
+                "author": row[1],
+                "category": row[2],
+                "podcast_uuid": row[3],
+                "store_collection_id": row[4],
+                "primary_key": row[5],
+                "description": row[6],
+            }
+        return None
+    except sqlite3.Error as e:
+        print(f"Database query error for store_collection_id {store_collection_id}: {e}")
+        return None
+
+
 def query_all_episodes_for_show(db, store_collection_id):
     """
     Query all episodes for a podcast show from the Apple Podcasts database.
@@ -107,9 +152,20 @@ if __name__ == "__main__":
     )
 
     db = sqlite3.connect(db_path)
-    # Query all episodes for a show
-    episodes = query_all_episodes_for_show(db, 1483081827)
+
+    # Query show information
+    show_id = 1483081827
+    show = query_show_info(db, show_id)
+    if show:
+        print(f"Podcast: {show['podcast_title']}")
+        print(f"Author: {show['author']}")
+        print(f"Category: {show['category']}\n")
+
+    # Query all episodes for the show
+    episodes = query_all_episodes_for_show(db, show_id)
+    print(f"Found {len(episodes)} episodes:\n")
     for ep in episodes:
         dt = datetime.fromtimestamp(ep["pub_date"] + 978307200)
-        print(f'{dt.strftime("%Y-%m-%d")} {ep}')
+        print(f'{dt.strftime("%Y-%m-%d")} - {ep["episode_title"]}')
+
     db.close()
