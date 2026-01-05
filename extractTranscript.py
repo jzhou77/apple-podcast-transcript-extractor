@@ -172,8 +172,11 @@ Examples:
   # Process all files with timestamps and custom output directory
   python extractTranscript.py --timestamps -o ~/my-transcripts
 
-  # Process all files, skipping those already processed
-  python extractTranscript.py --skip-existing
+  # Process TTML files from a custom directory
+  python extractTranscript.py -i ./test_show_download -o ./output_transcripts
+
+  # Process TTML files with timestamps and verbose output
+  python extractTranscript.py -i ./ttml_files -o ./transcripts --timestamps --verbose
 
   # Process a single TTML file
   python extractTranscript.py input.ttml output.txt
@@ -192,6 +195,8 @@ Examples:
                         help='Include timestamps in the transcript output')
     parser.add_argument('-o', '--output-dir', default='./transcripts',
                         help='Output directory for batch mode (default: ./transcripts)')
+    parser.add_argument('-i', '--input-dir',
+                        help='Input directory containing TTML files to process')
     parser.add_argument('--skip-existing', action='store_true', default=True,
                         help='Skip files that have already been processed (batch mode only)')
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -199,7 +204,7 @@ Examples:
 
     args = parser.parse_args()
 
-    # Determine mode based on positional arguments
+    # Determine mode based on arguments
     if args.input_file and args.output_file:
         # Single file mode
         try:
@@ -209,6 +214,75 @@ Examples:
         except Exception as e:
             print(f"Error: {e}")
             sys.exit(1)
+
+    elif args.input_dir:
+        # Custom directory mode - process TTML files from specified directory
+        output_dir = args.output_dir
+
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Verify input directory exists
+        if not os.path.isdir(args.input_dir):
+            print(f"Error: Input directory does not exist: {args.input_dir}")
+            sys.exit(1)
+
+        print(f"Searching for TTML files in {args.input_dir}...")
+
+        # Find all TTML files in the input directory
+        ttml_files = []
+        for filename in os.listdir(args.input_dir):
+            if filename.endswith('.ttml'):
+                ttml_files.append({
+                    'path': os.path.join(args.input_dir, filename),
+                    'filename': filename
+                })
+
+        print(f"Found {len(ttml_files)} TTML files")
+
+        if not ttml_files:
+            print("No TTML files found in input directory")
+            sys.exit(0)
+
+        # Process files
+        success_count = 0
+        skipped_count = 0
+        fail_count = 0
+
+        for i, file_info in enumerate(ttml_files, 1):
+            try:
+                # Use the TTML filename (without extension) as output filename
+                base_filename = os.path.splitext(file_info['filename'])[0]
+                output_filename = f"{base_filename}.txt"
+                output_path = os.path.join(output_dir, output_filename)
+
+                # Skip if file already exists and --skip-existing is set
+                if args.skip_existing and os.path.exists(output_path):
+                    if args.verbose:
+                        print(f"[{i}/{len(ttml_files)}] Skipping (already exists): {output_filename}")
+                    skipped_count += 1
+                    continue
+
+                if args.verbose:
+                    print(f"[{i}/{len(ttml_files)}] Processing: {file_info['filename']}")
+
+                with open(file_info['path'], 'r', encoding='utf-8') as f:
+                    data = f.read()
+
+                extract_transcript(data, output_path, args.timestamps)
+                success_count += 1
+
+                if not args.verbose:
+                    print(f"[{i}/{len(ttml_files)}] Processed: {output_filename}")
+
+            except Exception as error:
+                print(f"[{i}/{len(ttml_files)}] Error processing {file_info['filename']}: {error}")
+                fail_count += 1
+
+        print(f"\nProcessing complete!")
+        print(f"  Success: {success_count}")
+        print(f"  Failed: {fail_count}")
+        print(f"  Skipped: {skipped_count}")
 
     elif not args.input_file and not args.output_file:
         # Batch mode - process all TTML files
