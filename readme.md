@@ -1,24 +1,34 @@
 # Apple Podcasts Transcript Extractor
 
-This script extracts transcripts from the Podcasts app on macOS.
+This scripts that download and then extract transcripts from the Podcasts app on macOS.
+
+[![Scripts in action](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://youtu.be/t1svUq23-4o)
+
+Commands used in the above demo:
+```bash
+python3 fetchTranscripts.py 1828967504 -o "ttmls/The BugBash Podcast"
+
+python3 extractTranscript.py -i "ttmls/The BugBash Podcast" -o "transcripts/The BugBash Podcast"
+```
+
+Note 1828967504 is the show's `collection_id` defined in the `ZMTPODCAST` table. See [schema](schema.sql).
 
 ## Installation
 
 1. Clone the repository
-2. Install dependencies: `npm install` if use `extractTranscript.js`.
+2. (Optional) Ensure you have Python 3 installed.
 
 ## Usage
 
-Note: You need to download the desired podcast episode(s) before you can extract the transcript.
+Note: You need to download the desired podcast episode(s) before you can extract the transcript. Usually this means open the Podcast app, click on the episode you want to download, and click on More button and select `View Transcript` from the popup menu.
 
 ### Batch Mode
+
 To process all TTML files in your Apple Podcasts cache:
+
 ```bash
-node extractTranscript.js [--timestamps]
-(or)
 python3 extractTranscript.py [--timestamps]
 ```
-
 
 This will:
 1. Find all TTML files in `~/Library/Group Containers/243LU875E5.groups.com.apple.podcasts/Library/Cache/Assets/TTML`
@@ -56,6 +66,12 @@ For example:
 node extractTranscript.js <input_file> <output_file> [--timestamps]
 ```
 
+## Set up for fetchTranscripts.py script
+
+For this script to work, you need to create a `config.json` file. You can modify [config.json.example](config.json.example) to fill in your information. The steps are taken from this [post](https://blog.alexbeals.com/posts/downloading-arbitrary-apple-podcast-episode-transcripts#alternative-script). Once you obtain the "x-request-timestamp" and "X-Apple-ActionSignature", run the `get_bearer_token()` function in `fetchTranscripts.py` to get the bearer token, which can be reused for 30 days. After that, fetchTranscripts.py should work properly (see the demo above).
+
+If you need help to download raw TTML files or the converted transcripts for any show, I can help you with a small fee (contact me AT akin-00.dowered AT icloud.com).
+
 ## Where does the input file come from?
 
 The input file comes from the `transcript_<long_episode_id>.ttml` file in the `~/Library/Group Containers/243LU875E5.groups.com.apple.podcasts/Library/Cache/Assets/TTML/PodcastContent<short_episode_id>` directory.
@@ -83,8 +99,6 @@ sqlite> SELECT e.ZTITLE as episode_title, e.ZPUBDATE, e.ZDURATION,
 Supernova in the East I|553291535|16097.0|Dan Carlin's Hardcore History|Dan Carlin|History
 ```
 
-
-
 The schema.sql file contains the SQLite schemas for the Apple Podcasts cache.
 
 Key Tables for Metadata:
@@ -109,9 +123,28 @@ Key Tables for Metadata:
 
 For file "~/Library/Group Containers/243LU875E5.groups.com.apple.podcasts/Library/Cache/Assets/TTML/PodcastContent221/v4/02/af/94/02af94ae-1dd8-3aea-44c4-24c467bdddfd/transcript_1000740205141.ttml-1000740205141.ttml". `PodcastContent221/v4/02/af/94/02af94ae-1dd8-3aea-44c4-24c467bdddfd/transcript_1000740205141.ttml-1000740205141.ttml` is the `ZMTEPISODE.ZTRANSCRIPTIDENTIFIER`. We can extract metadata as:
 
-```bash
+```sql
 sqlite> select ZTRANSCRIPTIDENTIFIER from ZMTEPISODE where ZTRANSCRIPTIDENTIFIER like "%02af94ae-1dd8-3aea-44c4-24c467bdddfd/transcript_1000740205141.ttml%";
 PodcastContent221/v4/02/af/94/02af94ae-1dd8-3aea-44c4-24c467bdddfd/transcript_1000740205141.ttml
+
 sqlite> SELECT e.ZTITLE as episode_title, e.ZPUBDATE, e.ZDURATION, p.ZTITLE as podcast_title, p.ZAUTHOR, p.ZCATEGORY FROM ZMTEPISODE e JOIN ZMTPODCAST p ON e.ZPODCASTUUID = p.ZUUID WHERE e.ZTRANSCRIPTIDENTIFIER = "PodcastContent221/v4/02/af/94/02af94ae-1dd8-3aea-44c4-24c467bdddfd/transcript_1000740205141.ttml";
+
 Transitional injustice: Syria one year after Assad|786884509|1486.0|The Intelligence from The Economist|The Economist|Daily News
+```
+
+### Find a show's ID
+
+want podcast show information instead:
+
+```sql
+sqlite> SELECT
+      ZSTORECOLLECTIONID as collection_id,
+      ZTITLE as podcast_title,
+      ZUUID as podcast_uuid
+  FROM ZMTPODCAST
+  WHERE ZSTORECOLLECTIONID IS NOT NULL;
+
+80867514|Entrepreneurial Thought Leaders (ETL)|3F7F4164-D8FF-41AC-BB36-BD6CB1A6E007
+1184022695|The Jordan B. Peterson Podcast|6DEFC4FD-6A86-48DD-8E4B-9DFA048EF8B3
+...
 ```
